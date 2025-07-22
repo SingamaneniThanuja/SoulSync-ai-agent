@@ -1,0 +1,281 @@
+{
+  "name": "SoulSync",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyAKDuXmcOBjLzNJ9DWed767dlvjy6pEtyg",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Analyze this text: {{ $json.message.text }}. \\n\\nDetect the mood from [happy, good, normal, bored, sad].\\n\\nReturn a valid JSON like this:\\n{\\n  \\\"mood\\\": \\\"<mood in lowercase>\\\",\\n  \\\"response\\\": \\\"<empathetic response>\\\",\\n  \\\"story\\\": \\\"<short motivating story if sad, or a fun note if bored>\\\",\\n  \\\"playlist\\\": \\\"<playlist link or suggestion>\\\"\\n}\\n\\nRules:\\n- For sad: Craft a motivational short story using the keywords from the input and suggest an uplifting playlist.\\n- For bored: Share a joke and a fun music playlist.\\n- For happy: Celebrate with a cheerful response and suggest energetic music.\\n- For good or normal: Give a positive note and light playlist.\\nDo not add extra text or formatting outside the JSON.\"\n        }\n      ]\n    }\n  ]\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -660,
+        -760
+      ],
+      "id": "cde23512-f533-4325-b6cf-39d26bfbf90c",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "pre_checkout_query",
+          "message"
+        ],
+        "additionalFields": {
+          "download": true
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -980,
+        -740
+      ],
+      "id": "cd97701e-a721-4f0d-9229-5cccb598d41b",
+      "name": "Telegram Trigger",
+      "webhookId": "da29ae31-8f87-439e-ad5f-cbfb806f2542",
+      "credentials": {
+        "telegramApi": {
+          "id": "1AlMR1aedZNx5e5A",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract raw text containing the JSON\nconst rawText = $json[\"candidates\"][0][\"content\"][\"parts\"][0][\"text\"];\n\n// Remove the ```json and ``` wrappers\nconst cleanedText = rawText.replace(/```json|```/g, '').trim();\n\n// Parse the JSON safely\nlet parsed;\ntry {\n  parsed = JSON.parse(cleanedText);\n} catch (error) {\n  parsed = {\n    mood: \"unknown\",\n    response: \"Could not parse mood response.\",\n    story: \"\",\n    playlist: \"\"\n  };\n}\n\n// Extract values\nconst mood = parsed.mood || \"unknown\";\nconst response = parsed.response || \"\";\nconst story = parsed.story || \"\";\nconst playlist = parsed.playlist || \"\";\n\n// Mood-based phrase for playlist\nlet playlistPhrase = \"\";\nif (playlist) {\n  if (mood === \"happy\") {\n    playlistPhrase = `\\nCelebrate with this upbeat playlist: ${playlist}`;\n  } else if (mood === \"sad\") {\n    playlistPhrase = `\\nHere's something uplifting for you: ${playlist}`;\n  } else if (mood === \"bored\") {\n    playlistPhrase = `\\nBeat boredom with these tunes: ${playlist}`;\n  } else if (mood === \"good\" || mood === \"normal\") {\n    playlistPhrase = `\\nEnjoy this relaxing playlist: ${playlist}`;\n  } else {\n    playlistPhrase = `\\nCheck this playlist: ${playlist}`;\n  }\n}\n\n// Build CleanMessage\nlet CleanMessage = `Hey! You're feeling ${mood}. ${response}`;\nif (story && story.trim() !== \"\" && story.trim().toLowerCase() !== \"no story available.\") {\n  CleanMessage += `\\nHere's a story for you: ${story}`;\n}\nCleanMessage += playlistPhrase;\n\nreturn [\n  {\n    json: {\n      mood,\n      response,\n      story,\n      playlist,\n      CleanMessage\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        -720
+      ],
+      "id": "9c05fc0a-9594-4e3a-9126-918d8c000a1d",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "chatId": "1802896068",
+        "text": "={{$json[\"CleanMessage\"]}}  ",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1000,
+        -280
+      ],
+      "id": "423615f6-2d17-41eb-b798-c56b9b31bf56",
+      "name": "Send a text message",
+      "webhookId": "1fc2e4fe-270b-4dad-b277-f0f3fd705dbb",
+      "credentials": {
+        "telegramApi": {
+          "id": "1AlMR1aedZNx5e5A",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3c3bf33e-56e7-4a84-addd-90a28d19b8e4",
+              "name": "cleanmessage",
+              "value": "={{$json[\"CleanMessage\"]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -640,
+        -500
+      ],
+      "id": "6faa7a2c-060e-46f7-88ef-7ccb4702549f",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "664d47ef-da33-4aab-aea2-319c8aa0bb1f",
+              "name": "story",
+              "value": "={{$json[\"story\"]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -60,
+        -760
+      ],
+      "id": "60fc3524-b5ac-4203-917f-eb88891ec842",
+      "name": "story"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bdf7df2-fc1b-4ae8-92bf-cb236f9fb24e",
+              "name": "response",
+              "value": "={{$json[\"response\"]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -20,
+        -400
+      ],
+      "id": "a6d74161-6fd0-438a-a688-135d8e83ba86",
+      "name": "response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "301649ff-ad3d-4354-b3d9-1703fb0891d5",
+              "name": "mood",
+              "value": "={{$json[\"mood\"]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        -440
+      ],
+      "id": "17ce139a-8884-4a76-bd06-64eb891d1faa",
+      "name": "mood"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "story",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "story": {
+      "main": [
+        [
+          {
+            "node": "response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "response": {
+      "main": [
+        [
+          {
+            "node": "mood",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mood": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "95ac5c81-dc6e-4d4e-9536-dd7ebcf39849",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "502e2b3bd3abf8753f0bd26a6fbfa147dad7d7fc0207e26170a070a9f239a7f6"
+  },
+  "id": "GlXSrLe6jTShhVBa",
+  "tags": []
+}
